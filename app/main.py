@@ -28,8 +28,6 @@ def worker_func(start: int, end: int, targets: set) -> dict:
         hash_version = sha256_hash_str(potential_password)
         if hash_version in targets:
             founded[hash_version] = potential_password
-            if len(founded) == len(targets):
-                break
     return founded
 
 
@@ -40,24 +38,25 @@ def brute_force_password() -> None:
 
     results = {}
     with ProcessPoolExecutor(max_workers=number_of_workers) as executor:
-        futures = []
-        for i in range(number_of_workers):
-            start = i * step
-            end = (i + 1) * step if i < number_of_workers - 1 else 100000000
-            futures.append(executor.submit(worker_func, start, end, targets))
+        futures = [
+            executor.submit(worker_func,
+                            i * step,
+                            (i + 1) * step if i < number_of_workers - 1 else 100000000,
+                            targets)
+            for i in range(number_of_workers)
+        ]
 
         for future in as_completed(futures):
             part = future.result()
             results.update(part)
-            if len(results) == len(targets):
-                break
-        for password in results.values():
-            print(password)
+
+    assert len(results) == len(targets)
+    for password in sorted(results.values()):
+        print(password)
 
 
 if __name__ == "__main__":
     start_time = time.perf_counter()
     brute_force_password()
     end_time = time.perf_counter()
-
     print("Elapsed:", end_time - start_time)
